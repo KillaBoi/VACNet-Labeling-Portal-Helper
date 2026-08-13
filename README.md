@@ -1,6 +1,8 @@
 # VACNet Review Enhancer
 
 Userscript for the CS2 VACNet labelling portal (`counter-strike.net/vacnet/clips`). Unlocks full VOD seeking, adds keyboard controls, verdict presets, a clip bar with task info, and local review history.
+<br><br>
+<b>⚠️ NOTE: This does not let you automate decisions or "farm" labels in order to invite your friends/family/mother/father/sister/brother. It's only real use is to make clicking and decision making easier. Also please DO NOT use any video clip data after the Valve specified clip range TO INFLUENCE YOUR DECISION. <i>for example, someone may toggle on halfway through a game but the 10-12 second clip assigned to you may not show that which would mislabel the clip.
 
 ## Install
 
