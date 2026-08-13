@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
-// @namespace    https://pwn.dog
+// @namespace    https://counerstri.ke
 // @version      0.2.0
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
@@ -190,7 +190,9 @@
 		/* history */
 		#vne-history { margin-top: 10px; font: 11px/1.5 "Motiva Sans", Arial, sans-serif; color: #8a919c; }
 		#vne-history h4 { margin: 0 0 4px; font-size: 12px; color: #e8a33d; }
-		#vne-history .vne-hrow { display: flex; gap: 8px; justify-content: space-between; border-bottom: 1px solid #262b33; padding: 1px 0; }
+		#vne-history .vne-hrow { display: flex; gap: 8px; justify-content: space-between; border-bottom: 1px solid #262b33; padding: 1px 2px; }
+		#vne-history .vne-hrow.vne-apply { cursor: pointer; }
+		#vne-history .vne-hrow.vne-apply:hover { background: #262b33; }
 		#vne-history .vne-hlabels { color: #c8cdd4; }
 		#vne-history .vne-hlabels.vne-clean { color: #4caf50; }
 		#vne-history .vne-hlabels.vne-guilty { color: #ff5252; }
@@ -349,12 +351,20 @@
 		const box = document.createElement('div');
 		box.id = 'vne-history';
 		if (seen.length) {
-			const rows = seen.slice(0, 12).map(h => {
+			const rows = seen.slice(0, 12).map((h, i) => {
 				const s = labelSummary(h.labels);
 				const ago = Math.round((Date.now() - h.ts) / 3600000);
-				return `<div class="vne-hrow"><span class="vne-hlabels ${s.cls}">${s.txt}</span><span>${fmt(h.start)} → ${fmt(h.end)}</span><span>${ago < 1 ? '<1h' : ago + 'h'} ago · #${h.task}</span></div>`;
+				const canApply = (h.labels || []).some(l => /^(guilty|innocent|skip)_/.test(l));
+				return `<div class="vne-hrow${canApply ? ' vne-apply' : ''}" data-i="${i}"${canApply ? ' title="click to fill in this verdict"' : ''}><span class="vne-hlabels ${s.cls}">${s.txt}</span><span>${fmt(h.start)} → ${fmt(h.end)}</span><span>${ago < 1 ? '<1h' : ago + 'h'} ago · #${h.task}</span></div>`;
 			}).join('');
 			box.innerHTML = `<h4>Seen this VOD ${seen.length} time${seen.length > 1 ? 's' : ''} before</h4>${rows}`;
+			for (const row of box.querySelectorAll('.vne-hrow.vne-apply')) {
+				row.onclick = () => {
+					applyLabels(seen[+row.dataset.i].labels);
+					row.style.background = '#4caf5033';
+					setTimeout(() => row.style.background = '', 400);
+				};
+			}
 		} else {
 			const total = history().length;
 			box.innerHTML = `<h4>New VOD</h4><div>${total} clips in local history</div>`;
@@ -523,6 +533,14 @@ backspace  back
 		const p = CFG.presets[name];
 		if (!p) return;
 		QUESTIONS.forEach((q, i) => setVerdict(q, p[i]));
+	}
+	function applyLabels(labels) {
+		$('#backbutton')?.click(); // back to labeling mode if on confirm screen
+		for (const l of labels || []) {
+			const m = l.match(/^(guilty|innocent|skip)_(.+)$/);
+			if (!m || !QUESTIONS.includes(m[2])) continue;
+			setVerdict(m[2], m[1] === 'guilty' ? 'positive' : m[1] === 'innocent' ? 'negative' : 'skip');
+		}
 	}
 
 	// ---------------- keyboard ----------------
