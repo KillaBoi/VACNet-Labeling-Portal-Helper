@@ -17,8 +17,10 @@ Userscript for the CS2 VACNet labelling portal (`counter-strike.net/vacnet/clips
 - **Full VOD seeking**: the portal restricts playback to the assigned ~10s clip with a watchdog interval. The script blocks it at document start, so the native seekbar covers the whole VOD. Orange band = assigned clip, red tick = event moment, green bands = clips of this VOD you labelled before.
 - **Clip bar**: dedicated seekbar scoped to the assigned clip, transport buttons, playback rate, task id link, raw VOD link, report bad clip.
 - **Layout**: video sized to your window with verdicts on the right, instructions block and footer removed.
-- **History**: every submit is logged to localStorage; a "seen this VOD before" panel lists your past verdicts for repeat VODs.
-- **Archive**: `a` (or the history button) opens a full-screen table of every labelled task: time, task link, VOD hash, clip range, verdict, match id (click to copy), raw VOD link. Text + verdict filters, JSON/CSV export. Entries store the full VOD url, view link and match id from v0.2.0 onward; older entries render without links.
+- **History**: every submit is logged to localStorage; a "seen this VOD before" panel lists your past verdicts for repeat VODs. Clicking a past entry fills the current questions with that task's verdict.
+- **Archive**: `a` (or the history button) opens a full-screen table of every labelled task: time, task link, VOD hash, clip range, per-question verdict, match id (click to copy), raw VOD link. Text + verdict filters, JSON/CSV export. Entries store the full VOD url, view link and match id from v0.2.0 onward; older entries render without links.
+- **Out-of-clip warning**: an amber banner appears over the video whenever playback is outside the Valve-assigned clip; click it to jump back to the clip start. Remember: what happens outside the clip must not influence your verdict.
+- **Update check**: the script compares its version against this repo every 6 hours and shows a green update pill in the bar when a newer version is available; Tampermonkey also offers one-click updates via `@updateURL`.
 
 ## Keys
 

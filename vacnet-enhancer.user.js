@@ -1,9 +1,12 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.2.0
+// @version      0.3.0
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
+// @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
+// @updateURL    https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js
+// @downloadURL  https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js
 // @match        https://www.counter-strike.net/vacnet*
 // @run-at       document-start
 // @inject-into  page
@@ -34,6 +37,11 @@
 	};
 	const QUESTIONS = ['aimassist', 'wallhack', 'autobhop', 'bot'];
 	const LS_HISTORY = 'vneHistory';
+	const LS_UPDATE = 'vneUpdate';
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.3.0'; // fallback in sync with @version
+	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
+	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
+	const UPDATE_EVERY = 6 * 3600000;
 
 	// ---------------- clamp block (document-start) ----------------
 	// portal clamps playback with a 100ms setInterval, block it before it starts
@@ -132,6 +140,7 @@
 	function buildUI() {
 		injectCSS();
 		buildBar();
+		buildOutClipBanner();
 		buildProgressOverlay();
 		buildPresetRow();
 		buildHistoryPanel();
@@ -139,6 +148,49 @@
 		buildKeymapOverlay();
 		player.on('timeupdate', renderTick);
 		origSetInterval(renderTick, 250); // catch paused-state seeks
+		checkUpdate();
+	}
+
+	function verGt(a, b) {
+		const pa = String(a).split('.').map(Number), pb = String(b).split('.').map(Number);
+		for (let i = 0; i < 3; i++) {
+			if ((pa[i] || 0) > (pb[i] || 0)) return true;
+			if ((pa[i] || 0) < (pb[i] || 0)) return false;
+		}
+		return false;
+	}
+	function showUpdatePill(v) {
+		if ($('#vne-update')) return;
+		const a = document.createElement('a');
+		a.id = 'vne-update'; a.className = 'vne-btn';
+		a.href = UPDATE_PAGE; a.target = '_blank';
+		a.textContent = 'update v' + v;
+		a.title = 'new version on github, tampermonkey should also offer it via check for updates';
+		$('#vne-row').insertBefore(a, $('#vne-task'));
+	}
+	function checkUpdate() {
+		const cached = lsGet(LS_UPDATE, { t: 0, v: '' });
+		if (cached.v && verGt(cached.v, VERSION)) showUpdatePill(cached.v);
+		if (Date.now() - cached.t < UPDATE_EVERY) return;
+		fetch(UPDATE_RAW, { cache: 'no-store' })
+			.then(r => r.ok ? r.text() : '')
+			.then(t => {
+				const v = (t.match(/@version\s+([\d.]+)/) || [])[1] || '';
+				lsSet(LS_UPDATE, { t: Date.now(), v });
+				if (v && verGt(v, VERSION)) showUpdatePill(v);
+			})
+			.catch(() => {}); // csp/network fail, manager @updateURL still covers updates
+	}
+
+	function buildOutClipBanner() {
+		if (!clip.ok) return;
+		const b = document.createElement('div');
+		b.id = 'vne-outclip';
+		b.textContent = '⚠ outside the assigned clip · click to jump back';
+		b.title = 'you are watching the rest of the vod, not the clip valve assigned';
+		b.onclick = () => seekTo(clip.start);
+		($('.video-js') || $('.videocontainer')).appendChild(b);
+		ui.outclip = b;
 	}
 
 	function injectCSS() {
@@ -171,6 +223,9 @@
 		#vne-task a:hover { text-decoration: underline; }
 		#vne-match { cursor: pointer; border-bottom: 1px dotted #8a919c; }
 		#vne-nuke { background: #7a2b2b; border-color: #a03535; color: #ffdede; }
+		#vne-update { background: #2e7d32 !important; border-color: #2e7d32 !important; color: #eaffea !important; font-weight: 700; text-decoration: none; }
+		#vne-outclip { display: none; position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: #e8a33dd9; color: #15181d; font: 700 13px/1 "Motiva Sans", Arial, sans-serif; text-align: center; padding: 6px 0; cursor: pointer; user-select: none; }
+		#vne-outclip.vne-show { display: block; }
 
 		/* clip band on native full progress bar */
 		.vjs-progress-holder { overflow: visible; }
@@ -503,6 +558,7 @@ backspace  back
 			ui.clipEvent.style.left = (clamp((clip.event - clip.start) / len, 0, 1) * 100) + '%';
 			const inClip = t >= clip.start - 0.05 && t <= clip.end + 0.001;
 			ui.time.innerHTML = `${fmt(t)} / ${fmt(vid.duration)} · clip <b>${inClip ? fmt(clamp(t - clip.start, 0, len)) : '-'}</b> / ${fmt(len)}`;
+			if (ui.outclip) ui.outclip.classList.toggle('vne-show', !inClip);
 			if (clipLoop && t >= clip.end) seekTo(clip.start);
 		} else {
 			ui.time.textContent = `${fmt(t)} / ${fmt(vid.duration)}`;
