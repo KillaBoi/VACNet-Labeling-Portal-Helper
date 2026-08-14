@@ -1,13 +1,11 @@
 # VACNet Review Enhancer
+<a href="https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js"><img src="https://img.shields.io/badge/INSTALL%20NOW-click%20here-brightgreen?style=for-the-badge" alt="Install now" height="42"></a>
+<br><sub>Opens the raw userscript. With <a href="https://www.tampermonkey.net">Tampermonkey</a> or <a href="https://violentmonkey.github.io">Violentmonkey</a> installed it shows an install prompt. If you just see code, the manager is not installed or is not detecting it.</sub>
 
 Userscript for the CS2 VACNet labelling portal (`counter-strike.net/vacnet/clips`). Unlocks full VOD seeking, adds keyboard controls, verdict presets, a clip bar with task info, and local review history.
 <br><br>
 <b>⚠️ NOTE: This does not let you automate decisions or "farm" labels in order to invite your friends/family/mother/father/sister/brother. It's only real use is to make clicking and decision making easier.</b><br>
 <br>🙏 Also please <b>DO NOT</b> use any video clip data after the Valve specified clip range <b>TO INFLUENCE YOUR DECISION.</b><br><i>for example, someone may toggle on halfway through a game but the 10-12 second clip assigned to you may not show that which would mislabel the clip.
-
-<br><br>
-<a href="https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js"><img src="https://img.shields.io/badge/INSTALL%20NOW-click%20here-brightgreen?style=for-the-badge" alt="Install now" height="42"></a>
-<br><sub>Opens the raw userscript. With <a href="https://www.tampermonkey.net">Tampermonkey</a> or <a href="https://violentmonkey.github.io">Violentmonkey</a> installed it shows an install prompt. If you just see code, the manager is not installed or is not detecting it.</sub>
 
 ## Install
 
