@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.3.0
+// @version      0.3.1
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -32,13 +32,13 @@
 		presets: {
 			LEGIT: ['negative', 'negative', 'negative', 'negative'],
 			WH:    ['negative', 'positive', 'negative', 'negative'],
-			RAGE:  ['positive', 'positive', 'negative', 'negative'],
+			RAGE:  ['positive', 'positive', 'positive', 'negative'],
 		},
 	};
 	const QUESTIONS = ['aimassist', 'wallhack', 'autobhop', 'bot'];
 	const LS_HISTORY = 'vneHistory';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.3.0'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.3.1'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 	const UPDATE_EVERY = 6 * 3600000;
