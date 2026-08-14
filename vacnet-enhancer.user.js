@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.6.3
+// @version      0.7.0
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -48,7 +48,8 @@
 	const LS_SHARED = 'vneShared';
 	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.6.3'; // fallback in sync with @version
+	const LS_CLIPLOCK = 'vneClipLock';
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.7.0'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 
@@ -84,6 +85,7 @@
 	let clip = { start: 0, end: 0, event: 0, ok: false };
 	let task = { id: null, viewUrl: null, app: null, matchId: null };
 	let clipLoop = false;
+	let clipLock = lsGet(LS_CLIPLOCK, false); // persists across clips, confines playback to clip bounds
 	let holdTimer = null, holdEngaged = false, preHoldRate = 1;
 	let ui = {};
 
@@ -241,6 +243,8 @@
 		#vne-task a:hover { text-decoration: underline; }
 		#vne-match { cursor: pointer; border-bottom: 1px dotted #8a919c; }
 		#vne-nuke { background: #7a2b2b; border-color: #a03535; color: #ffdede; }
+		#vne-lock-wrap { display: inline-flex; align-items: center; gap: 4px; color: #c8cdd4; cursor: pointer; user-select: none; font-size: 12px; }
+		#vne-lock-wrap input { accent-color: #e8a33d; cursor: pointer; margin: 0; }
 		#vne-outclip { display: none; position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: #e8a33dd9; color: #15181d; font: 700 13px/1 "Motiva Sans", Arial, sans-serif; text-align: center; padding: 6px 0; cursor: pointer; user-select: none; }
 		#vne-outclip.vne-show { display: block; }
 		#vne-ver { position: fixed; right: 8px; bottom: 6px; z-index: 100000; font: 11px/1 monospace; color: #566070; text-decoration: none; user-select: none; }
@@ -329,6 +333,7 @@
 				<button class="vne-btn" id="vne-clipstart" title="c">clip</button>
 				<button class="vne-btn" id="vne-event" title="v">event</button>
 				<button class="vne-btn" id="vne-loop" title="g, restore original clip looping">loop</button>
+				<label id="vne-lock-wrap" title="lock playback to the assigned clip so you cannot watch the rest of the demo. stays on across clips."><input type="checkbox" id="vne-lock"> clip lock</label>
 				<button class="vne-btn" id="vne-fs" title="f">⛶</button>
 				<a class="vne-btn" id="vne-vod" href="${vodUrl}" target="_blank" title="d, raw vod webm">vod</a>
 				<button class="vne-btn" id="vne-keys" title="?">keys</button>
@@ -350,6 +355,9 @@
 		$('#vne-clipstart').onclick = () => seekTo(clip.start);
 		$('#vne-event').onclick = () => seekTo(clip.event - 2); // land just before the moment
 		ui.loop.onclick = toggleLoop;
+		const lockEl = $('#vne-lock');
+		lockEl.checked = clipLock;
+		lockEl.onchange = () => { clipLock = lockEl.checked; lsSet(LS_CLIPLOCK, clipLock); if (clipLock) enforceClipLock(); };
 		$('#vne-fs').onclick = toggleFullscreen;
 		$('#vne-keys').onclick = toggleKeymap;
 		$('#vne-bad').onclick = () => { if (window.confirm('report bad clip? submits immediately')) window.ReportBadClip(); };
@@ -599,15 +607,19 @@ backspace  back
 			ui.clipEvent.style.left = (clamp((clip.event - clip.start) / len, 0, 1) * 100) + '%';
 			const inClip = t >= clip.start - 0.05 && t <= clip.end + 0.001;
 			ui.time.innerHTML = `${fmt(t)} / ${fmt(vid.duration)} · clip <b>${inClip ? fmt(clamp(t - clip.start, 0, len)) : '-'}</b> / ${fmt(len)}`;
-			if (ui.outclip) ui.outclip.classList.toggle('vne-show', !inClip);
-			if (clipLoop && t >= clip.end) seekTo(clip.start);
+			if (ui.outclip) ui.outclip.classList.toggle('vne-show', !inClip && !clipLock);
+			if (clipLock) {
+				if (t >= clip.end || t < clip.start - 0.05) seekTo(clip.start);
+			} else if (clipLoop && t >= clip.end) {
+				seekTo(clip.start);
+			}
 		} else {
 			ui.time.textContent = `${fmt(t)} / ${fmt(vid.duration)}`;
 		}
 	}
 
 	// ---------------- player actions ----------------
-	function seekTo(t) { player.currentTime(clamp(t, 0, vid.duration || 1e9)); }
+	function seekTo(t) { if (clipLock && clip.ok) t = clamp(t, clip.start, clip.end); player.currentTime(clamp(t, 0, vid.duration || 1e9)); }
 	function seekBy(d) { seekTo(vid.currentTime + d); }
 	function togglePlay() { vid.paused ? player.play() : player.pause(); }
 	function setRate(r) { player.playbackRate(clamp(Math.round(r * 100) / 100, CFG.rateMin, CFG.rateMax)); renderTick(); }
@@ -616,6 +628,11 @@ backspace  back
 	function toggleLoop() {
 		clipLoop = !clipLoop;
 		ui.loop.classList.toggle('vne-on', clipLoop);
+	}
+	function enforceClipLock() {
+		if (!clip.ok || !vid) return;
+		const t = vid.currentTime;
+		if (t < clip.start || t > clip.end) seekTo(clip.start);
 	}
 
 	// ---------------- verdict actions ----------------
