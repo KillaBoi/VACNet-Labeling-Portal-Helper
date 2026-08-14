@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.6.0
+// @version      0.6.1
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -40,7 +40,7 @@
 	const LS_SHARED = 'vneShared';
 	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.6.0'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.6.1'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 	const UPDATE_EVERY = 6 * 3600000;
@@ -625,11 +625,11 @@ backspace  back
 		QUESTIONS.forEach((q, i) => setVerdict(q, p[i]));
 	}
 	// rename verdict buttons to Yes / Unsure / No, portal regenerates them so observe + reapply
+	// color: Yes red, Unsure amber, No green
 	const VTEXT = { positive: 'Yes', skip: 'Unsure', negative: 'No' };
+	const VCOLOR = { positive: '#ff5252', skip: '#e8a33d', negative: '#4caf50' };
 	function verdictHtml(kind) {
-		if (kind === 'positive') return `<span class="highlight-text">${VTEXT.positive}</span>`;
-		if (kind === 'negative') return `<span class="highlight-text-negative">${VTEXT.negative}</span>`;
-		return `<b>${VTEXT.skip}</b>`;
+		return `<b style="color:${VCOLOR[kind]}">${VTEXT[kind]}</b>`;
 	}
 	function relabelVerdicts() {
 		for (const btn of $$('.verdictbutton')) {
