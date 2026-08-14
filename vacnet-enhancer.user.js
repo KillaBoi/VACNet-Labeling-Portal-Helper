@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.7.0
+// @version      0.8.0
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -49,7 +49,8 @@
 	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
 	const LS_CLIPLOCK = 'vneClipLock';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.7.0'; // fallback in sync with @version
+	const LS_MORE = 'vneMore';
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.8.0'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 
@@ -243,6 +244,8 @@
 		#vne-task a:hover { text-decoration: underline; }
 		#vne-match { cursor: pointer; border-bottom: 1px dotted #8a919c; }
 		#vne-nuke { background: #7a2b2b; border-color: #a03535; color: #ffdede; }
+		#vne-bad { color: #f2c94c; }
+		#vne-more { display: inline-flex; align-items: center; gap: 6px; }
 		#vne-lock-wrap { display: inline-flex; align-items: center; gap: 4px; color: #c8cdd4; cursor: pointer; user-select: none; font-size: 12px; }
 		#vne-lock-wrap input { accent-color: #e8a33d; cursor: pointer; margin: 0; }
 		#vne-outclip { display: none; position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: #e8a33dd9; color: #15181d; font: 700 13px/1 "Motiva Sans", Arial, sans-serif; text-align: center; padding: 6px 0; cursor: pointer; user-select: none; }
@@ -330,13 +333,16 @@
 				<button class="vne-btn" id="vne-fb" title=", frame back">⏮</button>
 				<button class="vne-btn" id="vne-ff" title=". frame fwd">⏭</button>
 				<button class="vne-btn" id="vne-rate" title="- / = rate, hold space 2x">1x</button>
-				<button class="vne-btn" id="vne-clipstart" title="c">clip</button>
-				<button class="vne-btn" id="vne-event" title="v">event</button>
-				<button class="vne-btn" id="vne-loop" title="g, restore original clip looping">loop</button>
+				<button class="vne-btn" id="vne-more-toggle" title="show / hide extra buttons (clip, event, loop, keys, download)">⋯</button>
+				<span id="vne-more">
+					<button class="vne-btn" id="vne-clipstart" title="c">clip</button>
+					<button class="vne-btn" id="vne-event" title="v">event</button>
+					<button class="vne-btn" id="vne-loop" title="g, restore original clip looping">loop</button>
+					<button class="vne-btn" id="vne-keys" title="?">keys</button>
+					<a class="vne-btn" id="vne-vod" href="${vodUrl}" target="_blank" title="d, download / open the full vod webm">download entire video</a>
+				</span>
 				<label id="vne-lock-wrap" title="lock playback to the assigned clip so you cannot watch the rest of the demo. stays on across clips."><input type="checkbox" id="vne-lock"> clip lock</label>
 				<button class="vne-btn" id="vne-fs" title="f">⛶</button>
-				<a class="vne-btn" id="vne-vod" href="${vodUrl}" target="_blank" title="d, raw vod webm">vod</a>
-				<button class="vne-btn" id="vne-keys" title="?">keys</button>
 				<button class="vne-btn" id="vne-bad" title="report bad clip, submits immediately">bad clip</button>
 				<button class="vne-btn" id="vne-hist-btn" title="a, labelling history">history</button>
 				<span id="vne-task">${taskHtml}</span>
@@ -360,6 +366,10 @@
 		lockEl.onchange = () => { clipLock = lockEl.checked; lsSet(LS_CLIPLOCK, clipLock); if (clipLock) enforceClipLock(); };
 		$('#vne-fs').onclick = toggleFullscreen;
 		$('#vne-keys').onclick = toggleKeymap;
+		const moreEl = $('#vne-more'), moreToggle = $('#vne-more-toggle');
+		const applyMore = on => { moreEl.style.display = on ? '' : 'none'; moreToggle.classList.toggle('vne-on', on); };
+		applyMore(lsGet(LS_MORE, false));
+		moreToggle.onclick = () => { const on = moreEl.style.display === 'none'; applyMore(on); lsSet(LS_MORE, on); };
 		$('#vne-bad').onclick = () => { if (window.confirm('report bad clip? submits immediately')) window.ReportBadClip(); };
 		$('#vne-hist-btn').onclick = toggleArchive;
 		const mEl = $('#vne-match');
