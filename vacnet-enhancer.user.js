@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.5.0
+// @version      0.6.0
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -40,7 +40,7 @@
 	const LS_SHARED = 'vneShared';
 	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.5.0'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.6.0'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 	const UPDATE_EVERY = 6 * 3600000;
@@ -149,6 +149,7 @@
 		buildArchive();
 		buildKeymapOverlay();
 		buildVersionBadge();
+		hookRelabel();
 		player.on('timeupdate', renderTick);
 		origSetInterval(renderTick, 250); // catch paused-state seeks
 		checkUpdate();
@@ -568,8 +569,8 @@ g          clip loop      d  open vod
 a          history        esc  close overlays
 
 <b>verdicts</b> (1 aim, 2 wh, 3 bhop, 4 bot)
-1-4        toggle Not / Uncertain
-shift+1-4  label guilty
+1-4        toggle No / Unsure
+shift+1-4  Yes
 z LEGIT    h WH    r RAGE    x reset
 enter      proceed / confirm
 backspace  back
@@ -622,6 +623,41 @@ backspace  back
 		const p = CFG.presets[name];
 		if (!p) return;
 		QUESTIONS.forEach((q, i) => setVerdict(q, p[i]));
+	}
+	// rename verdict buttons to Yes / Unsure / No, portal regenerates them so observe + reapply
+	const VTEXT = { positive: 'Yes', skip: 'Unsure', negative: 'No' };
+	function verdictHtml(kind) {
+		if (kind === 'positive') return `<span class="highlight-text">${VTEXT.positive}</span>`;
+		if (kind === 'negative') return `<span class="highlight-text-negative">${VTEXT.negative}</span>`;
+		return `<b>${VTEXT.skip}</b>`;
+	}
+	function relabelVerdicts() {
+		for (const btn of $$('.verdictbutton')) {
+			const label = btn.querySelector('label');
+			if (!label) continue;
+			const kind = btn.classList.contains('positive') ? 'positive'
+				: btn.classList.contains('negative') ? 'negative' : 'skip';
+			const html = verdictHtml(kind);
+			if (label.innerHTML !== html) label.innerHTML = html;
+		}
+		// confirm screen summary, dataset guard so our own No is not reparsed as positive
+		for (const p of $$('.verdictbuttonsverdictlabel')) {
+			if (p.dataset.vne) continue;
+			const txt = p.textContent;
+			const kind = /uncertain/i.test(txt) ? 'skip' : /\bnot\b/i.test(txt) ? 'negative' : 'positive';
+			p.dataset.vne = '1';
+			p.innerHTML = '&nbsp;' + verdictHtml(kind);
+		}
+	}
+	function hookRelabel() {
+		const col = $('.verdicts-container') || $('.verdict-column');
+		if (!col) return;
+		relabelVerdicts();
+		const obs = new MutationObserver(() => {
+			obs.disconnect();
+			try { relabelVerdicts(); } finally { obs.observe(col, { childList: true, subtree: true }); }
+		});
+		obs.observe(col, { childList: true, subtree: true });
 	}
 	function applyLabels(labels) {
 		$('#backbutton')?.click(); // back to labeling mode if on confirm screen
