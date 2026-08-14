@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.6.1
+// @version      0.6.2
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -40,7 +40,7 @@
 	const LS_SHARED = 'vneShared';
 	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.6.1'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.6.2'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 	const UPDATE_EVERY = 6 * 3600000;
@@ -163,25 +163,23 @@
 		}
 		return false;
 	}
-	function showUpdatePill(v) {
-		if ($('#vne-update')) return;
-		const a = document.createElement('a');
-		a.id = 'vne-update'; a.className = 'vne-btn';
-		a.href = UPDATE_PAGE; a.target = '_blank';
-		a.textContent = 'update v' + v;
-		a.title = 'new version on github, tampermonkey should also offer it via check for updates';
-		$('#vne-row').insertBefore(a, $('#vne-task'));
+	function markUpdateAvailable(v) {
+		const el = $('#vne-ver');
+		if (!el) return;
+		el.textContent = `⬆ update available · v${v}`;
+		el.classList.add('vne-ver-update');
+		el.title = `you are on v${VERSION}, v${v} is on github. click to open, or use tampermonkey check for updates`;
 	}
 	function checkUpdate() {
 		const cached = lsGet(LS_UPDATE, { t: 0, v: '' });
-		if (cached.v && verGt(cached.v, VERSION)) showUpdatePill(cached.v);
+		if (cached.v && verGt(cached.v, VERSION)) markUpdateAvailable(cached.v);
 		if (Date.now() - cached.t < UPDATE_EVERY) return;
 		fetch(UPDATE_RAW, { cache: 'no-store' })
 			.then(r => r.ok ? r.text() : '')
 			.then(t => {
 				const v = (t.match(/@version\s+([\d.]+)/) || [])[1] || '';
 				lsSet(LS_UPDATE, { t: Date.now(), v });
-				if (v && verGt(v, VERSION)) showUpdatePill(v);
+				if (v && verGt(v, VERSION)) markUpdateAvailable(v);
 			})
 			.catch(() => {}); // csp/network fail, manager @updateURL still covers updates
 	}
@@ -235,11 +233,12 @@
 		#vne-task a:hover { text-decoration: underline; }
 		#vne-match { cursor: pointer; border-bottom: 1px dotted #8a919c; }
 		#vne-nuke { background: #7a2b2b; border-color: #a03535; color: #ffdede; }
-		#vne-update { background: #2e7d32 !important; border-color: #2e7d32 !important; color: #eaffea !important; font-weight: 700; text-decoration: none; }
 		#vne-outclip { display: none; position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: #e8a33dd9; color: #15181d; font: 700 13px/1 "Motiva Sans", Arial, sans-serif; text-align: center; padding: 6px 0; cursor: pointer; user-select: none; }
 		#vne-outclip.vne-show { display: block; }
 		#vne-ver { position: fixed; right: 8px; bottom: 6px; z-index: 100000; font: 11px/1 monospace; color: #566070; text-decoration: none; user-select: none; }
 		#vne-ver:hover { color: #8a919c; }
+		#vne-ver.vne-ver-update { color: #6dd36d; font-weight: 700; }
+		#vne-ver.vne-ver-update:hover { color: #8ff08f; }
 
 		/* clip band on native full progress bar */
 		.vjs-progress-holder { overflow: visible; }
