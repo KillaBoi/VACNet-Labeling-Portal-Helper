@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.3.1
+// @version      0.3.2
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -38,7 +38,7 @@
 	const QUESTIONS = ['aimassist', 'wallhack', 'autobhop', 'bot'];
 	const LS_HISTORY = 'vneHistory';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.3.1'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.3.2'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 	const UPDATE_EVERY = 6 * 3600000;
@@ -146,6 +146,7 @@
 		buildHistoryPanel();
 		buildArchive();
 		buildKeymapOverlay();
+		buildVersionBadge();
 		player.on('timeupdate', renderTick);
 		origSetInterval(renderTick, 250); // catch paused-state seeks
 		checkUpdate();
@@ -180,6 +181,14 @@
 				if (v && verGt(v, VERSION)) showUpdatePill(v);
 			})
 			.catch(() => {}); // csp/network fail, manager @updateURL still covers updates
+	}
+
+	function buildVersionBadge() {
+		const a = document.createElement('a');
+		a.id = 'vne-ver';
+		a.href = UPDATE_PAGE; a.target = '_blank';
+		a.textContent = 'VACNet Review Enhancer v' + VERSION;
+		document.body.appendChild(a);
 	}
 
 	function buildOutClipBanner() {
@@ -226,6 +235,8 @@
 		#vne-update { background: #2e7d32 !important; border-color: #2e7d32 !important; color: #eaffea !important; font-weight: 700; text-decoration: none; }
 		#vne-outclip { display: none; position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: #e8a33dd9; color: #15181d; font: 700 13px/1 "Motiva Sans", Arial, sans-serif; text-align: center; padding: 6px 0; cursor: pointer; user-select: none; }
 		#vne-outclip.vne-show { display: block; }
+		#vne-ver { position: fixed; right: 8px; bottom: 6px; z-index: 100000; font: 11px/1 monospace; color: #566070; text-decoration: none; user-select: none; }
+		#vne-ver:hover { color: #8a919c; }
 
 		/* clip band on native full progress bar */
 		.vjs-progress-holder { overflow: visible; }
