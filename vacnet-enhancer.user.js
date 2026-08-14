@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.3.2
+// @version      0.4.0
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -37,8 +37,10 @@
 	};
 	const QUESTIONS = ['aimassist', 'wallhack', 'autobhop', 'bot'];
 	const LS_HISTORY = 'vneHistory';
+	const LS_SHARED = 'vneShared';
+	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.3.2'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.4.0'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 	const UPDATE_EVERY = 6 * 3600000;
@@ -242,6 +244,7 @@
 		.vjs-progress-holder { overflow: visible; }
 		.vne-band { position: absolute; top: 0; height: 100%; background: #e8a33d66; pointer-events: none; z-index: 1; }
 		.vne-band.vne-hist { background: #4caf5044; }
+		.vne-band.vne-shared { background: #6db3e844; }
 		.vne-tick { position: absolute; top: -3px; width: 2px; height: calc(100% + 6px); background: #ff5252; pointer-events: none; z-index: 2; }
 		.vne-tick.vne-hist { background: #4caf50; }
 
@@ -281,6 +284,7 @@
 		#vne-arch .vne-mono { font-family: monospace; font-size: 12px; color: #8a919c; }
 		#vne-arch .vne-skip { color: #8a919c; }
 		#vne-arch .vne-copy { cursor: pointer; border-bottom: 1px dotted #8a919c; }
+		.vne-by { color: #8a919c; font-style: italic; }
 		.vne-btn.vne-filter-on { background: #e8a33d; color: #15181d; border-color: #e8a33d; }
 
 		/* keymap overlay */
@@ -384,11 +388,18 @@
 		tick.style.left = (clip.event / dur * 100) + '%';
 		holder.appendChild(tick);
 
-		// green bands for clips of this vod we labelled before
+		// green bands ours, blue bands imported mates
 		const vodKey = vodId();
 		for (const h of history().filter(h => h.vod === vodKey)) {
 			const hb = document.createElement('div');
 			hb.className = 'vne-band vne-hist';
+			hb.style.left = (h.start / dur * 100) + '%';
+			hb.style.width = ((h.end - h.start) / dur * 100) + '%';
+			holder.appendChild(hb);
+		}
+		for (const h of shared().filter(h => h.vod === vodKey)) {
+			const hb = document.createElement('div');
+			hb.className = 'vne-band vne-shared';
 			hb.style.left = (h.start / dur * 100) + '%';
 			hb.style.width = ((h.end - h.start) / dur * 100) + '%';
 			holder.appendChild(hb);
@@ -413,7 +424,9 @@
 
 	function buildHistoryPanel() {
 		const vodKey = vodId();
-		const seen = history().filter(h => h.vod === vodKey).reverse();
+		const seen = history().filter(h => h.vod === vodKey)
+			.concat(shared().filter(h => h.vod === vodKey))
+			.sort((a, b) => (b.ts || 0) - (a.ts || 0));
 		const box = document.createElement('div');
 		box.id = 'vne-history';
 		if (seen.length) {
@@ -421,7 +434,7 @@
 				const s = labelSummary(h.labels);
 				const ago = Math.round((Date.now() - h.ts) / 3600000);
 				const canApply = (h.labels || []).some(l => /^(guilty|innocent|skip)_/.test(l));
-				return `<div class="vne-hrow${canApply ? ' vne-apply' : ''}" data-i="${i}"${canApply ? ' title="click to fill in this verdict"' : ''}><span class="vne-hlabels ${s.cls}">${s.txt}</span><span>${fmt(h.start)} → ${fmt(h.end)}</span><span>${ago < 1 ? '<1h' : ago + 'h'} ago · #${h.task}</span></div>`;
+				return `<div class="vne-hrow${canApply ? ' vne-apply' : ''}" data-i="${i}"${canApply ? ' title="click to fill in this verdict"' : ''}><span class="vne-hlabels ${s.cls}">${s.txt}</span><span>${fmt(h.start)} → ${fmt(h.end)}</span><span>${ago < 1 ? '<1h' : ago + 'h'} ago · #${h.task}${h.by ? ` · <span class="vne-by">${h.by}</span>` : ''}</span></div>`;
 			}).join('');
 			box.innerHTML = `<h4>Seen this VOD ${seen.length} time${seen.length > 1 ? 's' : ''} before</h4>${rows}`;
 			for (const row of box.querySelectorAll('.vne-hrow.vne-apply')) {
@@ -452,6 +465,9 @@
 				<button class="vne-btn" data-kind="guilty">guilty</button>
 				<button class="vne-btn" id="vne-arch-json">export json</button>
 				<button class="vne-btn" id="vne-arch-csv">export csv</button>
+				<button class="vne-btn" id="vne-arch-share" title="export your labels with your name, for a mate to import">share</button>
+				<button class="vne-btn" id="vne-arch-import" title="import a mate's share file">import</button>
+				<input type="file" id="vne-import-file" accept=".json,application/json" style="display:none">
 				<button class="vne-btn" id="vne-arch-close" title="esc">✕</button>
 			</div>
 			<div id="vne-arch-stats"></div>
@@ -466,6 +482,9 @@
 				renderArchive();
 			};
 		}
+		$('#vne-arch-share').onclick = exportShare;
+		$('#vne-arch-import').onclick = () => $('#vne-import-file').click();
+		$('#vne-import-file').onchange = e => { if (e.target.files[0]) importShare(e.target.files[0]); e.target.value = ''; };
 		$('#vne-arch-json').onclick = () => dl('vacnet-history.json', JSON.stringify(history(), null, 1), 'application/json');
 		$('#vne-arch-csv').onclick = () => {
 			const esc = v => { v = String(v ?? ''); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
@@ -486,20 +505,22 @@
 	}
 
 	function renderArchive() {
-		const all = history().slice().reverse();
+		const all = history().concat(shared()).sort((a, b) => (b.ts || 0) - (a.ts || 0));
 		const kindOf = h => labelSummary(h.labels).txt === 'clean' ? 'clean'
 			: labelSummary(h.labels).txt === 'uncertain' ? 'uncertain'
 			: (h.labels || []).some(l => l.startsWith('guilty')) ? 'guilty' : 'other';
 		const list = all.filter(h => {
 			if (archFilter.kind !== 'all' && kindOf(h) !== archFilter.kind) return false;
 			if (!archFilter.q) return true;
-			return [h.task, h.vod, h.match].some(v => String(v || '').toLowerCase().includes(archFilter.q));
+			return [h.task, h.vod, h.match, h.by].some(v => String(v || '').toLowerCase().includes(archFilter.q));
 		});
 		const counts = { clean: 0, uncertain: 0, guilty: 0, other: 0 };
 		for (const h of all) counts[kindOf(h)]++;
+		const imported = shared().length;
 		$('#vne-arch-stats').textContent =
-			`${all.length} labelled · ${counts.clean} clean · ${counts.uncertain} uncertain · ${counts.guilty} guilty` +
+			`${all.length - imported} labelled · ${counts.clean} clean · ${counts.uncertain} uncertain · ${counts.guilty} guilty` +
 			(counts.other ? ` · ${counts.other} other` : '') +
+			(imported ? ` · ${imported} imported` : '') +
 			(list.length !== all.length ? ` · showing ${list.length}` : '');
 		const pad = n => String(n).padStart(2, '0');
 		const when = ts => { const d = new Date(ts); return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -511,12 +532,13 @@
 				<td class="vne-mono">${h.vod || ''}</td>
 				<td>${fmt(h.start)} → ${fmt(h.end)}</td>
 				<td>${labelDetail(h.labels)}</td>
+				<td class="vne-by">${h.by || ''}</td>
 				<td>${h.match ? `<span class="vne-copy vne-mono" data-copy="${h.match}" title="click to copy">${h.match}</span>` : ''}</td>
 				<td>${h.vodUrl ? `<a href="${h.vodUrl}" target="_blank">vod</a>` : ''}</td>
 			</tr>`;
 		}).join('');
 		$('#vne-arch-body').innerHTML = list.length
-			? `<table><tr><th>when</th><th>task</th><th>vod</th><th>clip</th><th>verdict</th><th>match</th><th>links</th></tr>${rows}</table>` +
+			? `<table><tr><th>when</th><th>task</th><th>vod</th><th>clip</th><th>verdict</th><th>by</th><th>match</th><th>links</th></tr>${rows}</table>` +
 				(list.length > CAP ? `<p>showing latest ${CAP} of ${list.length}, filter or export for the rest</p>` : '')
 			: '<p>nothing yet</p>';
 		for (const el of $$('#vne-arch .vne-copy')) {
@@ -689,10 +711,44 @@ backspace  back
 	// ---------------- history ----------------
 	function vodId() {
 		const src = vid?.currentSrc || '';
-		const m = src.match(/csow_([0-9a-f]{16})/); // leading 16 hex chars enough
+		const m = src.match(/_([0-9a-f]{16})[0-9a-f]*\.webm/); // 16 hex prefix enough, vods are csow_/cl_ + 64 hex
 		return m ? m[1] : src.split('/').pop();
 	}
 	function history() { return lsGet(LS_HISTORY, []); }
+	function shared() { return lsGet(LS_SHARED, []); }
+	function exportShare() {
+		const name = window.prompt('name to attach to your labels', lsGet(LS_NAME, ''));
+		if (name === null) return;
+		const n = name.trim() || 'anonymous';
+		lsSet(LS_NAME, n);
+		dl(`vacnet-labels-${n}.json`, JSON.stringify({ vne: 1, name: n, exported: Date.now(), verdicts: history() }, null, 1), 'application/json');
+	}
+	function importShare(file) {
+		file.text().then(txt => {
+			let obj;
+			try { obj = JSON.parse(txt); } catch (e) { window.alert('not valid json'); return; }
+			const verdicts = Array.isArray(obj) ? obj : obj?.verdicts;
+			if (!Array.isArray(verdicts)) { window.alert('not a vacnet labels export'); return; }
+			let by = String(obj?.name || '').trim();
+			if (!by) by = (window.prompt('whose labels are these?') || '').trim() || 'unknown';
+			const ownTasks = new Set(history().map(h => String(h.task)));
+			const sh = shared();
+			const seen = new Set(sh.map(h => h.by + '|' + h.task));
+			let added = 0, skipped = 0;
+			for (const v of verdicts) {
+				if (!v || !v.task || !Array.isArray(v.labels)) { skipped++; continue; }
+				const key = by + '|' + v.task;
+				if (ownTasks.has(String(v.task)) || seen.has(key)) { skipped++; continue; }
+				seen.add(key);
+				sh.push({ ...v, by });
+				added++;
+			}
+			if (sh.length > 20000) sh.splice(0, sh.length - 20000);
+			lsSet(LS_SHARED, sh);
+			renderArchive();
+			window.alert(`imported ${added} from ${by}, skipped ${skipped} (duplicates or invalid)`);
+		});
+	}
 	function labelSummary(labels) {
 		if (!labels || !labels.length) return { cls: '', txt: '?' };
 		if (labels.includes('tag_badclip')) return { cls: '', txt: 'bad clip' };
