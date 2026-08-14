@@ -13,6 +13,14 @@
 // @grant        none
 // ==/UserScript==
 
+/* ---------------------------------------------------------------------------
+ *  READING THIS AS PLAIN TEXT?
+ *  Then Tampermonkey / Violentmonkey is NOT installed, or it did not detect
+ *  this script. A working script manager shows its install screen instead of
+ *  showing this code. Install one from https://www.tampermonkey.net or
+ *  https://violentmonkey.github.io , then reopen this .user.js to install.
+ * ------------------------------------------------------------------------- */
+
 (function () {
 	'use strict';
 	if (window.__vne) return; // no double inject

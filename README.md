@@ -5,10 +5,14 @@ Userscript for the CS2 VACNet labelling portal (`counter-strike.net/vacnet/clips
 <b>⚠️ NOTE: This does not let you automate decisions or "farm" labels in order to invite your friends/family/mother/father/sister/brother. It's only real use is to make clicking and decision making easier.</b>
 <br>🙏 Also please <b>DO NOT</b> use any video clip data after the Valve specified clip range <b>TO INFLUENCE YOUR DECISION.</b><br><i>for example, someone may toggle on halfway through a game but the 10-12 second clip assigned to you may not show that which would mislabel the clip.
 
+<br><br>
+<a href="https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js"><img src="https://img.shields.io/badge/INSTALL%20NOW-click%20here-brightgreen?style=for-the-badge" alt="Install now" height="42"></a>
+<br><sub>Opens the raw userscript. With <a href="https://www.tampermonkey.net">Tampermonkey</a> or <a href="https://violentmonkey.github.io">Violentmonkey</a> installed it shows an install prompt. If you just see code, the manager is not installed or is not detecting it.</sub>
+
 ## Install
 
 1. Install Tampermonkey (or Violentmonkey).
-2. Dashboard → Utilities → import, click into the code and press 'raw' on GitHub or create a new script and paste the contents of`vacnet-enhancer.user.js`.
+2. Click <b>INSTALL NOW</b> above (or open `vacnet-enhancer.user.js` and press <b>Raw</b>); your script manager shows an install prompt. Fallback: create a new script and paste the file contents.
 3. Open the portal. Wide layout kicks in above 1400px window width.<img width="1913" height="934" alt="image" src="https://github.com/user-attachments/assets/929eab23-0811-4768-95c4-9b270f494168" />
 
 
