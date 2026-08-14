@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.4.0
+// @version      0.5.0
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -40,7 +40,7 @@
 	const LS_SHARED = 'vneShared';
 	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.4.0'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.5.0'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 	const UPDATE_EVERY = 6 * 3600000;
@@ -721,7 +721,10 @@ backspace  back
 		if (name === null) return;
 		const n = name.trim() || 'anonymous';
 		lsSet(LS_NAME, n);
-		dl(`vacnet-labels-${n}.json`, JSON.stringify({ vne: 1, name: n, exported: Date.now(), verdicts: history() }, null, 1), 'application/json');
+		const sh = shared();
+		const withGroup = sh.length > 0 && window.confirm(`include ${sh.length} imported labels from others?\nok = full group dataset with everyone's names, cancel = just yours`);
+		const verdicts = withGroup ? history().concat(sh) : history();
+		dl(`vacnet-labels-${n}${withGroup ? '-group' : ''}.json`, JSON.stringify({ vne: 2, name: n, exported: Date.now(), verdicts }, null, 1), 'application/json');
 	}
 	function importShare(file) {
 		file.text().then(txt => {
@@ -737,10 +740,11 @@ backspace  back
 			let added = 0, skipped = 0;
 			for (const v of verdicts) {
 				if (!v || !v.task || !Array.isArray(v.labels)) { skipped++; continue; }
-				const key = by + '|' + v.task;
+				const eby = String(v.by || '').trim() || by; // group exports carry per-entry names, keep them
+				const key = eby + '|' + v.task;
 				if (ownTasks.has(String(v.task)) || seen.has(key)) { skipped++; continue; }
 				seen.add(key);
-				sh.push({ ...v, by });
+				sh.push({ ...v, by: eby });
 				added++;
 			}
 			if (sh.length > 20000) sh.splice(0, sh.length - 20000);
