@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.6.2
+// @version      0.6.3
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -40,10 +40,9 @@
 	const LS_SHARED = 'vneShared';
 	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.6.2'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.6.3'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
-	const UPDATE_EVERY = 6 * 3600000;
 
 	// ---------------- clamp block (document-start) ----------------
 	// portal clamps playback with a 100ms setInterval, block it before it starts
@@ -168,17 +167,18 @@
 		if (!el) return;
 		el.textContent = `⬆ update available · v${v}`;
 		el.classList.add('vne-ver-update');
-		el.title = `you are on v${VERSION}, v${v} is on github. click to open, or use tampermonkey check for updates`;
+		el.href = UPDATE_RAW; // raw user.js, opening it prompts tampermonkey to install
+		el.title = `you are on v${VERSION}, v${v} is on github. click to install, or use tampermonkey check for updates`;
 	}
 	function checkUpdate() {
-		const cached = lsGet(LS_UPDATE, { t: 0, v: '' });
+		// one check per page load / new case, cached value shows instantly then the fetch refreshes it
+		const cached = lsGet(LS_UPDATE, { v: '' });
 		if (cached.v && verGt(cached.v, VERSION)) markUpdateAvailable(cached.v);
-		if (Date.now() - cached.t < UPDATE_EVERY) return;
 		fetch(UPDATE_RAW, { cache: 'no-store' })
 			.then(r => r.ok ? r.text() : '')
 			.then(t => {
 				const v = (t.match(/@version\s+([\d.]+)/) || [])[1] || '';
-				lsSet(LS_UPDATE, { t: Date.now(), v });
+				if (v) lsSet(LS_UPDATE, { v });
 				if (v && verGt(v, VERSION)) markUpdateAvailable(v);
 			})
 			.catch(() => {}); // csp/network fail, manager @updateURL still covers updates
