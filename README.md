@@ -23,6 +23,7 @@ Userscript for the CS2 VACNet labelling portal (`counter-strike.net/vacnet/clips
 - **Archive**: `a` (or the history button) opens a full-screen table of every labelled task: time, task link, VOD hash, clip range, per-question verdict, match id (click to copy), raw VOD link. Text + verdict filters, JSON/CSV export. Entries store the full VOD url, view link and match id from v0.2.0 onward; older entries render without links.
 - **Out-of-clip warning**: an amber banner appears over the video whenever playback is outside the Valve-assigned clip; click it to jump back to the clip start. Remember: what happens outside the clip must not influence your verdict.
 - **Clip lock**: a checkbox in the bar (off by default) that re-confines playback to the assigned clip, the original portal behaviour, so you cannot see the rest of the demo. The setting persists across clips.
+- **Name mask**: your reviewer name in the portal header is blurred past legibility with an eye icon over it, clipped to a fixed width so its length does not show either. Hover it for a second (a ring fills to show the wait) to read it; move off and it re-blurs. Click it to pin it open, marked by an amber padlock, and click again to hide it; the pin persists across clips. Keeps it out of screenshots and streams.
 - **Update check**: the script compares its version against this repo every 6 hours and shows a green update pill in the bar when a newer version is available; Tampermonkey also offers one-click updates via `@updateURL`.
 - **Share / import**: `share` in the archive exports your labels stamped with a name you choose; `import` merges a mate's file. Their verdicts appear with their name in grey in the seen-before panel (click to fill in), as blue bands on the timeline, and in the archive with a `by` column. Duplicate-safe, and imports are stored separately so your own stats stay clean. If you have imported data, share asks whether to include it: choosing yes exports a `-group` file containing everyone's labels with each contributor's name preserved, so a single file can carry the whole group and be relayed onward without losing attribution.
 
@@ -39,7 +40,8 @@ Userscript for the CS2 VACNet labelling portal (`counter-strike.net/vacnet/clips
 | a | history archive | esc | close overlays |
 | 1-4 | toggle Not / Uncertain per question | shift+1-4 | label guilty |
 | z | LEGIT preset (all Not) | x | reset (all Uncertain) |
-| h | WH preset | r | RAGE preset |
+| q | AIM preset | h | WH preset |
+| r | RAGE preset | | |
 | enter | proceed / confirm | backspace | back |
 | ? | keymap overlay | | |
 

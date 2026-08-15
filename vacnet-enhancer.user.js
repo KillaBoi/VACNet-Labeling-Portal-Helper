@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.8.0
+// @version      0.8.1
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -39,6 +39,7 @@
 		// preset name -> [aimassist, wallhack, autobhop, bot], values: positive|skip|negative
 		presets: {
 			LEGIT: ['negative', 'negative', 'negative', 'negative'],
+			AIM:   ['positive', 'negative', 'negative', 'negative'],
 			WH:    ['negative', 'positive', 'negative', 'negative'],
 			RAGE:  ['positive', 'positive', 'positive', 'negative'],
 		},
@@ -49,8 +50,9 @@
 	const LS_NAME = 'vneName';
 	const LS_UPDATE = 'vneUpdate';
 	const LS_CLIPLOCK = 'vneClipLock';
+	const LS_NAMELOCK = 'vneNameLock';
 	const LS_MORE = 'vneMore';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.8.0'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.8.1'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 
@@ -87,6 +89,7 @@
 	let task = { id: null, viewUrl: null, app: null, matchId: null };
 	let clipLoop = false;
 	let clipLock = lsGet(LS_CLIPLOCK, false); // persists across clips, confines playback to clip bounds
+	let nameLocked = lsGet(LS_NAMELOCK, false); // reviewer name pinned visible, persists across clips
 	let holdTimer = null, holdEngaged = false, preHoldRate = 1;
 	let ui = {};
 
@@ -160,6 +163,7 @@
 		buildKeymapOverlay();
 		buildVersionBadge();
 		hookRelabel();
+		hookCensorName();
 		player.on('timeupdate', renderTick);
 		origSetInterval(renderTick, 250); // catch paused-state seeks
 		checkUpdate();
@@ -267,9 +271,39 @@
 		#vne-presets { display: flex; gap: 8px; margin: 0 0 10px; }
 		#vne-presets .vne-btn { flex: 1; text-align: center; font-weight: 700; padding: 6px 0; }
 		#vne-preset-legit { background: #2e7d32; border-color: #2e7d32; color: #eaffea; }
+		#vne-preset-aim { background: #7a8c1f; border-color: #7a8c1f; color: #f6ffe0; }
 		#vne-preset-wh { background: #c98a1b; border-color: #c98a1b; color: #fff7e5; }
 		#vne-preset-rage { background: #b03030; border-color: #b03030; color: #ffecec; }
+		/* square, width is set from its own height in buildPresetRow.
+		   two ids so it outranks the flex:1 on #vne-presets .vne-btn above */
+		#vne-presets #vne-preset-reset { flex: 0 0 auto; box-sizing: border-box; padding: 0; font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
 		#vne-presets .vne-btn:hover { filter: brightness(1.2); }
+
+		/* reviewer name in the portal header, masked until you hold the hover for 3s.
+		   the name is never in the dom while masked, so length and glyph shapes leak nothing */
+		.vne-name { position: relative; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+		/* fixed width + overflow hidden so a long name cannot widen the blur, blur radius
+		   is over half the font size so no glyph edge survives */
+		.vne-name-text { display: inline-block; width: 82px; overflow: hidden; white-space: nowrap; filter: blur(7px); transition: filter .15s ease; }
+		.vne-name.vne-revealed .vne-name-text { width: auto; filter: none; }
+		.vne-name-eye { position: absolute; left: 0; top: 50%; width: 82px; transform: translateY(-50%); display: flex; justify-content: center; pointer-events: none; color: #c8cdd4; transition: opacity .15s, color .12s; }
+		.vne-name-eye svg { width: 15px; height: 15px; display: block; }
+		.vne-name:hover .vne-name-eye { color: #e8a33d; }
+		.vne-name.vne-revealed .vne-name-eye { opacity: 0; }
+		.vne-name-ring { width: 13px; height: 13px; transform: rotate(-90deg); opacity: 0; transition: opacity .12s; }
+		.vne-name-ring circle { fill: none; stroke-width: 3; }
+		.vne-name-ring .vne-ring-bg { stroke: #ffffff26; }
+		.vne-name-ring .vne-ring-fg { stroke: #e8a33d; stroke-dasharray: 50.3; stroke-dashoffset: 50.3; }
+		.vne-name:hover .vne-name-ring { opacity: 1; }
+		.vne-name:hover .vne-ring-fg { animation: vne-ring 1s linear forwards; }
+		.vne-name.vne-revealed .vne-name-ring { opacity: 0; }
+		@keyframes vne-ring { to { stroke-dashoffset: 0; } }
+		/* click to pin it open, the padlock takes the ring's slot */
+		.vne-name.vne-locked .vne-name-ring { display: none; }
+		.vne-name-lock { display: none; color: #e8a33d; }
+		.vne-name-lock svg { width: 12px; height: 12px; display: block; }
+		.vne-name.vne-locked .vne-name-lock { display: block; }
+		.vne-name.vne-locked:hover .vne-name-lock { color: #f2bb63; }
 
 		/* history */
 		#vne-history { margin-top: 10px; font: 11px/1.5 "Motiva Sans", Arial, sans-serif; color: #8a919c; }
@@ -437,15 +471,80 @@
 		row.id = 'vne-presets';
 		row.innerHTML = `
 			<button class="vne-btn" id="vne-preset-legit" title="z, all Not">LEGIT</button>
+			<button class="vne-btn" id="vne-preset-aim" title="q">AIM</button>
 			<button class="vne-btn" id="vne-preset-wh" title="h">WH</button>
 			<button class="vne-btn" id="vne-preset-rage" title="r">RAGE</button>
-			<button class="vne-btn" id="vne-preset-reset" title="x, all Uncertain">RESET</button>`;
+			<button class="vne-btn" id="vne-preset-reset" title="x, reset to all Unsure" aria-label="reset">↺</button>`;
 		const target = $('.verdicts-container');
 		target.parentNode.insertBefore(row, target);
 		$('#vne-preset-legit').onclick = () => applyPreset('LEGIT');
+		$('#vne-preset-aim').onclick = () => applyPreset('AIM');
 		$('#vne-preset-wh').onclick = () => applyPreset('WH');
 		$('#vne-preset-rage').onclick = () => applyPreset('RAGE');
-		$('#vne-preset-reset').onclick = () => QUESTIONS.forEach(q => setVerdict(q, 'skip'));
+		const reset = $('#vne-preset-reset');
+		reset.onclick = () => QUESTIONS.forEach(q => setVerdict(q, 'skip'));
+		// square it off the row height, the portal's own button styling decides that
+		const squareReset = () => {
+			const w = reset.offsetHeight + 'px';
+			if (reset.offsetHeight && reset.style.width !== w) reset.style.width = w; // guard, observer fires on our own write
+		};
+		requestAnimationFrame(squareReset);
+		if (window.ResizeObserver) new ResizeObserver(squareReset).observe(row);
+	}
+
+	// the header prints the reviewer name as a bare text node next to Logout.
+	// wrap it so it can be blurred out under an eye icon, hold the hover for
+	// NAME_HOLD ms, tracked by a ring, to read it. re-applied because the header
+	// is re-rendered on navigation within the portal
+	const NAME_HOLD = 1000; // keep in sync with the vne-ring animation duration
+	const EYE_SVG = '<span class="vne-name-eye" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+		'<path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/></svg></span>';
+	const LOCK_SVG = '<span class="vne-name-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+		'<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>';
+	function censorName() {
+		for (const p of $$('.PageHeader .right p')) {
+			if (!p.querySelector('a[href*="logout"]')) continue;
+			if (p.querySelector('.vne-name')) continue;
+			for (const node of Array.from(p.childNodes)) {
+				if (node.nodeType !== Node.TEXT_NODE || !node.textContent.trim()) continue;
+				const span = document.createElement('span');
+				span.className = 'vne-name' + (nameLocked ? ' vne-revealed vne-locked' : '');
+				span.innerHTML = '<span class="vne-name-text"></span>' + EYE_SVG +
+					'<svg class="vne-name-ring" viewBox="0 0 20 20" aria-hidden="true">' +
+					'<circle class="vne-ring-bg" cx="10" cy="10" r="8"/>' +
+					'<circle class="vne-ring-fg" cx="10" cy="10" r="8"/></svg>' + LOCK_SVG;
+				span.querySelector('.vne-name-text').textContent = node.textContent.trim();
+				let timer = 0;
+				const hold = () => { timer = setTimeout(() => span.classList.add('vne-revealed'), NAME_HOLD); };
+				span.addEventListener('mouseenter', () => { if (!nameLocked) hold(); });
+				span.addEventListener('mouseleave', () => {
+					clearTimeout(timer);
+					if (!nameLocked) span.classList.remove('vne-revealed');
+				});
+				span.addEventListener('click', () => {
+					nameLocked = !nameLocked;
+					lsSet(LS_NAMELOCK, nameLocked);
+					clearTimeout(timer);
+					for (const s of $$('.vne-name')) {
+						s.classList.toggle('vne-locked', nameLocked);
+						s.classList.toggle('vne-revealed', nameLocked);
+					}
+					if (!nameLocked) hold(); // pointer is still on it, re-run the hold instead of stranding it blurred
+				});
+				p.replaceChild(span, node);
+				if (/\s$/.test(node.textContent)) p.insertBefore(document.createTextNode(' '), span.nextSibling);
+			}
+		}
+	}
+	function hookCensorName() {
+		const head = $('.PageHeader');
+		if (!head) return;
+		censorName();
+		const obs = new MutationObserver(() => {
+			obs.disconnect();
+			try { censorName(); } finally { obs.observe(head, { childList: true, subtree: true }); }
+		});
+		obs.observe(head, { childList: true, subtree: true });
 	}
 
 	function buildHistoryPanel() {
@@ -596,7 +695,7 @@ a          history        esc  close overlays
 <b>verdicts</b> (1 aim, 2 wh, 3 bhop, 4 bot)
 1-4        toggle No / Unsure
 shift+1-4  Yes
-z LEGIT    h WH    r RAGE    x reset
+z LEGIT  q AIM  h WH  r RAGE  x reset
 enter      proceed / confirm
 backspace  back
 ?          this help`;
@@ -751,6 +850,7 @@ backspace  back
 				case '£': case '#': setVerdict('autobhop', 'positive'); break;
 				case '$': setVerdict('bot', 'positive'); break;
 				case 'z': case 'Z': applyPreset('LEGIT'); break;
+				case 'q': case 'Q': applyPreset('AIM'); break;
 				case 'h': case 'H': applyPreset('WH'); break;
 				case 'r': case 'R': applyPreset('RAGE'); break;
 				case 'x': case 'X': QUESTIONS.forEach(q => setVerdict(q, 'skip')); break;
