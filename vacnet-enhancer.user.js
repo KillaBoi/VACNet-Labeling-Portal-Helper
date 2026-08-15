@@ -268,6 +268,9 @@
 		.vne-tick.vne-hist { background: #4caf50; }
 
 		/* presets */
+		/* proceed sits flush under the questions box with all the slack below it, even it out */
+		#submitVerdictButton { display: inline-block; margin-top: 26px !important; }
+
 		#vne-presets { display: flex; gap: 8px; margin: 0 0 10px; }
 		#vne-presets .vne-btn { flex: 1; text-align: center; font-weight: 700; padding: 6px 0; }
 		#vne-preset-legit { background: #2e7d32; border-color: #2e7d32; color: #eaffea; }
