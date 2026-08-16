@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VACNet Review Enhancer
 // @namespace    https://counerstri.ke
-// @version      0.8.1
+// @version      0.8.2
 // @description  full vod seeking, keyboard controls, verdict presets, clip bar, task info, history for the CS2 VACNet labelling portal
 // @author       killa
 // @homepageURL  https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper
@@ -52,7 +52,7 @@
 	const LS_CLIPLOCK = 'vneClipLock';
 	const LS_NAMELOCK = 'vneNameLock';
 	const LS_MORE = 'vneMore';
-	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.8.1'; // fallback in sync with @version
+	const VERSION = (typeof GM_info !== 'undefined' && GM_info.script?.version) || '0.8.2'; // fallback in sync with @version
 	const UPDATE_RAW = 'https://raw.githubusercontent.com/KillaBoi/VACNet-Labeling-Portal-Helper/main/vacnet-enhancer.user.js';
 	const UPDATE_PAGE = 'https://github.com/KillaBoi/VACNet-Labeling-Portal-Helper';
 
@@ -268,8 +268,8 @@
 		.vne-tick.vne-hist { background: #4caf50; }
 
 		/* presets */
-		/* proceed sits flush under the questions box with all the slack below it, even it out */
-		#submitVerdictButton { display: inline-block; margin-top: 26px !important; }
+		/* space the whole button row off the questions box; on the container so back + confirm stay aligned */
+		#submitbuttons { margin-top: 26px !important; }
 
 		#vne-presets { display: flex; gap: 8px; margin: 0 0 10px; }
 		#vne-presets .vne-btn { flex: 1; text-align: center; font-weight: 700; padding: 6px 0; }
