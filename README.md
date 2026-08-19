@@ -82,3 +82,4 @@ Presets are editable in `CFG.presets` near the top of the script. Fastest clean 
 - If the script somehow loads after the page (script manager misconfigured), a red **"clamp active! nuke"** button appears in the bar as a fallback.
 - The portal's own console error (`Modal ... addEventListener of null`) is Valve's bug, not the script.
 - History lives in `localStorage.vneHistory`, capped at 5000 entries; imported labels live in `localStorage.vneShared`.
+- Under the WTFPL License, don't be surprised if any of your code somehow "magically" appears in my commits, especially if my code/ideas end up in yours 😉
